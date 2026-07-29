@@ -4,6 +4,7 @@ import com.example.articles.dto.ArticleRequest;
 import com.example.articles.entity.Article;
 import com.example.articles.entity.Tag;
 import com.example.articles.repository.ArticleRepository;
+import com.example.articles.repository.TagRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -15,11 +16,13 @@ import java.util.List;
 @Transactional(readOnly = true)
 public class ArticleService {
     private final ArticleRepository articleRepository;
+    private final TagRepository tagRepository;
 
     @Transactional(readOnly = false)
     public Article createArticle(ArticleRequest request) {
         List<Tag> tags = request.tags().stream()
-                .map(req -> Tag.create(req.name()))
+                .map(req -> tagRepository.findByName(req.name())
+                        .orElseGet(() -> Tag.create(req.name())))
                 .toList();
         return articleRepository.save(Article.create(request.title(), request.text(),
                 request.status(), request.publicationDate(), tags));

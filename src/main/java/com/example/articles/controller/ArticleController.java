@@ -25,7 +25,7 @@ public class ArticleController {
             @Valid @RequestBody ArticleRequest request) {
         Article createdArticle = articleService.createArticle(request);
         return ResponseEntity
-                .created(URI.create("/articles" + createdArticle.getId()))
+                .created(URI.create("/articles/" + createdArticle.getId()))
                 .body(ArticleResponse.from(createdArticle));
     }
 }
