@@ -1,11 +1,14 @@
 package com.example.articles.service;
 
 import com.example.articles.dto.ArticleRequest;
+import com.example.articles.dto.ArticleResponse;
 import com.example.articles.entity.Article;
 import com.example.articles.entity.Tag;
 import com.example.articles.repository.ArticleRepository;
 import com.example.articles.repository.TagRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,5 +29,10 @@ public class ArticleService {
                 .toList();
         return articleRepository.save(Article.create(request.title(), request.text(),
                 request.status(), request.publicationDate(), tags));
+    }
+
+    public Page<ArticleResponse> getArticles(Pageable pageable) {
+        return articleRepository.findAll(pageable)
+                .map(ArticleResponse::from);
     }
 }
