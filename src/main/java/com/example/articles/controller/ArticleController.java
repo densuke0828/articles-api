@@ -13,6 +13,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.net.URI;
+import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
@@ -31,7 +32,11 @@ public class ArticleController {
 
     @GetMapping
     public ResponseEntity<Page<ArticleResponse>> getArticles(
-            @PageableDefault(size = 10) Pageable pageable) {
-        return ResponseEntity.ok(articleService.getArticles(pageable));
+            @PageableDefault(size = 10) Pageable pageable,
+            @RequestParam(required = false) String keyword) {
+        return ResponseEntity.ok(keyword != null ?
+                articleService.searchByKeyword(keyword, pageable) :
+                articleService.getArticles(pageable)
+        );
     }
 }

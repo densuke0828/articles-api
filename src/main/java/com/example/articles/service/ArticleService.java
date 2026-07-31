@@ -35,4 +35,9 @@ public class ArticleService {
         return articleRepository.findAll(pageable)
                 .map(ArticleResponse::from);
     }
+
+    public Page<ArticleResponse> searchByKeyword(String keyword, Pageable pageable) {
+        return articleRepository.findByKeyword(keyword, pageable)
+                .map(ArticleResponse::from);
+    }
 }
