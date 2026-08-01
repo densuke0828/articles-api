@@ -36,7 +36,13 @@ public class ArticleController {
             @RequestParam(required = false) String keyword) {
         return ResponseEntity.ok(keyword != null ?
                 articleService.searchByKeyword(keyword, pageable) :
-                articleService.getArticles(pageable)
-        );
+                articleService.getArticles(pageable));
     }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<ArticleResponse> getArticleById(@PathVariable Long id) {
+        Article article = articleService.getArticleById(id);
+        return ResponseEntity.ok(ArticleResponse.from(article));
+    }
+
 }

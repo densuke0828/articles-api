@@ -4,6 +4,7 @@ import com.example.articles.dto.ArticleRequest;
 import com.example.articles.dto.ArticleResponse;
 import com.example.articles.entity.Article;
 import com.example.articles.entity.Tag;
+import com.example.articles.exception.ArticleNotFoundException;
 import com.example.articles.repository.ArticleRepository;
 import com.example.articles.repository.TagRepository;
 import lombok.RequiredArgsConstructor;
@@ -39,5 +40,10 @@ public class ArticleService {
     public Page<ArticleResponse> searchByKeyword(String keyword, Pageable pageable) {
         return articleRepository.findByKeyword(keyword, pageable)
                 .map(ArticleResponse::from);
+    }
+
+    public Article getArticleById(Long id) {
+        return articleRepository.findById(id)
+                .orElseThrow(() -> new ArticleNotFoundException(id));
     }
 }
