@@ -53,6 +53,13 @@ public class ArticleService {
         return foundArticle;
     }
 
+    @Transactional(readOnly = false)
+    public void deleteArticle(Long id) {
+        Article foundArticle = articleRepository.findById(id)
+                .orElseThrow(() -> new ArticleNotFoundException(id));
+        articleRepository.delete(foundArticle);
+    }
+
     private List<Tag> toTags(List<TagRequest> requests) {
         return requests.stream()
                 .map(req -> tagRepository.findByName(req.name())
