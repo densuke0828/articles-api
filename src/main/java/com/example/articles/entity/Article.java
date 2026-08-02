@@ -73,4 +73,19 @@ public class Article {
          this.tags.add(tag);
          tag.assignArticle(this);
      }
+
+     public void removeTag(Tag tag) {
+         this.tags.remove(tag);
+         tag.unassignArticle(this);
+     }
+
+    public void update(String title, String text, ArticleStatus status,
+                       LocalDate publicationDate, List<Tag> tags) {
+        this.title = title;
+        this.text = text;
+        this.status = status;
+        this.publicationDate = publicationDate;
+        new ArrayList<>(this.tags).forEach(this::removeTag);
+        tags.forEach(this::addTag);
+    }
 }

@@ -2,6 +2,7 @@ package com.example.articles.service;
 
 import com.example.articles.dto.ArticleRequest;
 import com.example.articles.dto.ArticleResponse;
+import com.example.articles.dto.TagRequest;
 import com.example.articles.entity.Article;
 import com.example.articles.entity.Tag;
 import com.example.articles.exception.ArticleNotFoundException;
@@ -24,12 +25,8 @@ public class ArticleService {
 
     @Transactional(readOnly = false)
     public Article createArticle(ArticleRequest request) {
-        List<Tag> tags = request.tags().stream()
-                .map(req -> tagRepository.findByName(req.name())
-                        .orElseGet(() -> Tag.create(req.name())))
-                .toList();
         return articleRepository.save(Article.create(request.title(), request.text(),
-                request.status(), request.publicationDate(), tags));
+                request.status(), request.publicationDate(), toTags(request.tags())));
     }
 
     public Page<ArticleResponse> getArticles(Pageable pageable) {
@@ -45,5 +42,21 @@ public class ArticleService {
     public Article getArticleById(Long id) {
         return articleRepository.findById(id)
                 .orElseThrow(() -> new ArticleNotFoundException(id));
+    }
+
+    @Transactional(readOnly = false)
+    public Article updateArticle(Long id, ArticleRequest request) {
+        Article foundArticle = articleRepository.findById(id)
+                .orElseThrow(() -> new ArticleNotFoundException(id));
+        foundArticle.update(request.title(), request.text(), request.status(),
+                request.publicationDate(), toTags(request.tags()));
+        return foundArticle;
+    }
+
+    private List<Tag> toTags(List<TagRequest> requests) {
+        return requests.stream()
+                .map(req -> tagRepository.findByName(req.name())
+                        .orElseGet(() -> Tag.create(req.name())))
+                .toList();
     }
 }

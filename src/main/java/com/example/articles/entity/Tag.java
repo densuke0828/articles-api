@@ -46,4 +46,8 @@ public class Tag {
     void assignArticle(Article article) {
         this.articles.add(article);
     }
+
+    void unassignArticle(Article article) {
+        this.articles.remove(article);
+    }
 }
