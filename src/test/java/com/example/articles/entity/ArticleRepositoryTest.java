@@ -80,4 +80,18 @@ public class ArticleRepositoryTest {
         assertThat(result.getContent()).isEmpty();
         assertThat(result.getTotalElements()).isZero();
     }
+
+    @Test
+    void findByKeyword_大文字小文字が異なっていてもkeywordを含む記事が返る() {
+        articleRepository.save(Article.create("Java独習", "初学者へのロードマップ",
+                ArticleStatus.DRAFT, LocalDate.of(2026, 8, 1), javaTags));
+        articleRepository.save(Article.create("アリストテレス入門", "アリストテレスとは",
+                ArticleStatus.DRAFT, LocalDate.of(2026, 8, 1), philosophyTags));
+        Page<Article> result = articleRepository.findByKeyword(
+                "java", PageRequest.of(0, 10));
+
+        assertThat(result.getContent()).hasSize(1);
+        assertThat(result.getContent().get(0).getTitle()).isEqualTo("Java独習");
+        assertThat(result.getTotalElements()).isEqualTo(1);
+    }
 }
