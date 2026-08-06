@@ -1,5 +1,6 @@
 package com.example.articles.service;
 import com.example.articles.dto.ArticleRequest;
+import com.example.articles.dto.ArticleResponse;
 import com.example.articles.dto.TagRequest;
 import com.example.articles.entity.Article;
 import com.example.articles.entity.Tag;
@@ -22,6 +23,11 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.then;
 import static org.assertj.core.api.Assertions.assertThat;
 import java.util.Optional;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 @ExtendWith(MockitoExtension.class)
 public class ArticleServiceTest {
@@ -62,5 +68,25 @@ public class ArticleServiceTest {
         assertThat(secondCapturedTag.getArticles()).containsExactly(captor.getValue());
     }
 
+    @Test
+    void getArticles_pageableに合わせて記事取得() {
+        List<Tag> javaTags = List.of(Tag.create("C#"), Tag.create("プログラミング"));
+        List<Tag> philosophyTags = List.of(Tag.create("アリストテレス"), Tag.create("哲学"));
+        Article draftArticle = Article.create("C#独習", "C#ができるには",
+                ArticleStatus.DRAFT, LocalDate.of(2026, 8, 1), javaTags);
+        Article publishedArticle = Article.create("アリストテレス入門", "アリストテレスとは",
+                ArticleStatus.PUBLISHED, LocalDate.of(2026, 8, 1), philosophyTags);
+        Pageable pageable = PageRequest.of(0, 10);
+        Page<Article> articlePage = new PageImpl<>(
+                List.of(draftArticle, publishedArticle), pageable, 2);
+        given(articleRepository.findAll(pageable)).willReturn(articlePage);
+
+        Page<ArticleResponse> result = articleService.getArticles(pageable);
+
+        then(articleRepository).should().findAll(pageable);
+        assertThat(result.getContent()).containsExactlyInAnyOrder(
+                ArticleResponse.from(draftArticle), ArticleResponse.from(publishedArticle));
+        assertThat(result.getTotalElements()).isEqualTo(2);
+    }
 
 }
