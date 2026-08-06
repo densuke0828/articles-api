@@ -70,23 +70,41 @@ public class ArticleServiceTest {
 
     @Test
     void getArticles_pageableに合わせて記事取得() {
-        List<Tag> javaTags = List.of(Tag.create("C#"), Tag.create("プログラミング"));
+        List<Tag> goTags = List.of(Tag.create("GO"), Tag.create("プログラミング"));
         List<Tag> philosophyTags = List.of(Tag.create("アリストテレス"), Tag.create("哲学"));
-        Article draftArticle = Article.create("C#独習", "C#ができるには",
-                ArticleStatus.DRAFT, LocalDate.of(2026, 8, 1), javaTags);
-        Article publishedArticle = Article.create("アリストテレス入門", "アリストテレスとは",
+        Article goArticle = Article.create("GO独習", "GOができるには",
+                ArticleStatus.DRAFT, LocalDate.of(2026, 8, 1), goTags);
+        Article aristotleArticle = Article.create("アリストテレス入門", "アリストテレスとは",
                 ArticleStatus.PUBLISHED, LocalDate.of(2026, 8, 1), philosophyTags);
         Pageable pageable = PageRequest.of(0, 10);
-        Page<Article> articlePage = new PageImpl<>(
-                List.of(draftArticle, publishedArticle), pageable, 2);
-        given(articleRepository.findAll(pageable)).willReturn(articlePage);
+        Page<Article> articlePages = new PageImpl<>(
+                List.of(goArticle, aristotleArticle), pageable, 2);
+        given(articleRepository.findAll(pageable)).willReturn(articlePages);
 
         Page<ArticleResponse> result = articleService.getArticles(pageable);
 
         then(articleRepository).should().findAll(pageable);
         assertThat(result.getContent()).containsExactlyInAnyOrder(
-                ArticleResponse.from(draftArticle), ArticleResponse.from(publishedArticle));
+                ArticleResponse.from(goArticle), ArticleResponse.from(aristotleArticle));
         assertThat(result.getTotalElements()).isEqualTo(2);
+    }
+
+    @Test
+    void searchByKeyword_keywordに合致した記事を取得() {
+        List<Tag> philosophyTags = List.of(Tag.create("アリストテレス"), Tag.create("哲学"));
+        Article aristotleArticle = Article.create("アリストテレス入門", "アリストテレスとは",
+                ArticleStatus.PUBLISHED, LocalDate.of(2026, 8, 1), philosophyTags);
+        String keyword = "アリストテレス";
+        Pageable pageable = PageRequest.of(0, 10);
+        Page<Article> articlePages = new PageImpl<>(List.of(aristotleArticle), pageable, 1);
+        given(articleRepository.findByKeyword(keyword, pageable)).willReturn(articlePages);
+
+        Page<ArticleResponse> result = articleService.searchByKeyword(keyword, pageable);
+
+        then(articleRepository).should().findByKeyword(keyword, pageable);
+        assertThat(result.getContent()).containsExactlyInAnyOrder(
+                ArticleResponse.from(aristotleArticle));
+        assertThat(result.getTotalElements()).isEqualTo(1);
     }
 
 }
