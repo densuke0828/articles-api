@@ -5,14 +5,17 @@ import com.example.articles.dto.TagRequest;
 import com.example.articles.entity.Article;
 import com.example.articles.entity.Tag;
 import com.example.articles.enums.ArticleStatus;
+import com.example.articles.exception.ArticleNotFoundException;
 import com.example.articles.repository.ArticleRepository;
 import com.example.articles.repository.TagRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -39,6 +42,17 @@ public class ArticleServiceTest {
 
     @InjectMocks
     private ArticleService articleService;
+
+    private List<Tag> philosophyTags;
+    private Article aristotleArticle;
+
+    @BeforeEach
+    void setUp() {
+        philosophyTags = List.of(Tag.create("アリストテレス"), Tag.create("哲学"));
+        aristotleArticle = Article.create("アリストテレス入門", "アリストテレスとは",
+                ArticleStatus.PUBLISHED, LocalDate.of(2026, 8, 1),
+                philosophyTags);
+    }
 
     @Test
     void createArticle_記事が登録される() {
@@ -71,11 +85,8 @@ public class ArticleServiceTest {
     @Test
     void getArticles_pageableに合わせて記事取得() {
         List<Tag> goTags = List.of(Tag.create("GO"), Tag.create("プログラミング"));
-        List<Tag> philosophyTags = List.of(Tag.create("アリストテレス"), Tag.create("哲学"));
         Article goArticle = Article.create("GO独習", "GOができるには",
                 ArticleStatus.DRAFT, LocalDate.of(2026, 8, 1), goTags);
-        Article aristotleArticle = Article.create("アリストテレス入門", "アリストテレスとは",
-                ArticleStatus.PUBLISHED, LocalDate.of(2026, 8, 1), philosophyTags);
         Pageable pageable = PageRequest.of(0, 10);
         Page<Article> articlePages = new PageImpl<>(
                 List.of(goArticle, aristotleArticle), pageable, 2);
@@ -91,9 +102,6 @@ public class ArticleServiceTest {
 
     @Test
     void searchByKeyword_keywordに合致した記事を取得() {
-        List<Tag> philosophyTags = List.of(Tag.create("アリストテレス"), Tag.create("哲学"));
-        Article aristotleArticle = Article.create("アリストテレス入門", "アリストテレスとは",
-                ArticleStatus.PUBLISHED, LocalDate.of(2026, 8, 1), philosophyTags);
         String keyword = "アリストテレス";
         Pageable pageable = PageRequest.of(0, 10);
         Page<Article> articlePages = new PageImpl<>(List.of(aristotleArticle), pageable, 1);
@@ -107,4 +115,67 @@ public class ArticleServiceTest {
         assertThat(result.getTotalElements()).isEqualTo(1);
     }
 
+    @Test
+    void getArticleById_正常系_指定したIdの記事を取得() {
+        given(articleRepository.findById(1L)).willReturn(Optional.of(aristotleArticle));
+
+        Article result = articleService.getArticleById(1L);
+
+        then(articleRepository).should().findById(1L);
+        assertThat(result).isEqualTo(aristotleArticle);
+    }
+
+    @Test
+    void getArticleById_異常系_指定したIDが登録されていない() {
+        given(articleRepository.findById(999L)).willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> articleService.getArticleById(999L))
+                .isInstanceOf(ArticleNotFoundException.class)
+                .hasMessageContaining("999");
+        then(articleRepository).should().findById(999L);
+    }
+
+    @Test
+    void updateArticle_正常系_記事が更新される() {
+        List<TagRequest> tagRequests = List.of(
+                new TagRequest("プラトン"), new TagRequest("ギリシャ哲学"));
+        ArticleRequest articleRequest = new ArticleRequest("プラトン入門", "プラトンとは",
+                ArticleStatus.PUBLISHED, tagRequests, LocalDate.of(2026, 8, 8));
+        given(articleRepository.findById(1L)).willReturn(Optional.of(aristotleArticle));
+        given(tagRepository.findByName(anyString())).willReturn(Optional.empty());
+
+        Article result = articleService.updateArticle(1L, articleRequest);
+
+        then(articleRepository).should().findById(1L);
+        Tag firstTag = result.getTags().get(0);
+        Tag secondTag = result.getTags().get(1);
+
+        assertThat(result.getTitle()).isEqualTo(articleRequest.title());
+        assertThat(result.getText()).isEqualTo(articleRequest.text());
+        assertThat(result.getStatus()).isEqualTo(articleRequest.status());
+        assertThat(result.getPublicationDate()).isEqualTo(articleRequest.publicationDate());
+        assertThat(result.getTags()).hasSize(2);
+
+        assertThat(firstTag.getName()).isEqualTo(tagRequests.get(0).name());
+        assertThat(firstTag.getArticles()).containsExactly(result);
+        assertThat(secondTag.getName()).isEqualTo(tagRequests.get(1).name());
+        assertThat(secondTag.getArticles()).containsExactly(result);
+
+        assertThat(philosophyTags.get(0).getArticles()).doesNotContain(result);
+        assertThat(philosophyTags.get(1).getArticles()).doesNotContain(result);
+    }
+
+    @Test
+    void updateArticle_異常系_指定したIDが登録されていない() {
+        List<TagRequest> tagRequests = List.of(
+                new TagRequest("プラトン"), new TagRequest("ギリシャ哲学"));
+        ArticleRequest articleRequest = new ArticleRequest("プラトン入門", "プラトンとは",
+                ArticleStatus.PUBLISHED, tagRequests, LocalDate.of(2026, 8, 8));
+        given(articleRepository.findById(999L)).willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> articleService.updateArticle(999L, articleRequest))
+                .isInstanceOf(ArticleNotFoundException.class)
+                .hasMessageContaining("999");
+        then(articleRepository).should().findById(999L);
+    }
 }
