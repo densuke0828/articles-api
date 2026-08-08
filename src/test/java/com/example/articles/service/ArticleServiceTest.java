@@ -16,6 +16,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.never;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -177,5 +178,26 @@ public class ArticleServiceTest {
                 .isInstanceOf(ArticleNotFoundException.class)
                 .hasMessageContaining("999");
         then(articleRepository).should().findById(999L);
+    }
+
+    @Test
+    void deleteArticle_正常系_記事が削除される() {
+        given(articleRepository.findById(1L)).willReturn(Optional.of(aristotleArticle));
+
+        articleService.deleteArticle(1L);
+
+        then(articleRepository).should().findById(1L);
+        then(articleRepository).should().delete(aristotleArticle);
+    }
+
+    @Test
+    void deleteArticle_異常系_指定したIDが登録されていない() {
+        given(articleRepository.findById(999L)).willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> articleService.deleteArticle(999L))
+                .isInstanceOf(ArticleNotFoundException.class)
+                .hasMessageContaining("999");
+        then(articleRepository).should().findById(999L);
+        then(articleRepository).should(never()).delete(any());
     }
 }
