@@ -12,14 +12,14 @@ public record ArticleRequest(
         @Size(max = 50, message = "タイトルは50文字以下で入力してください")
         String title,
 
-        @NotBlank
-        @Size(max = 500)
+        @NotBlank(message = "テキストは必須です")
+        @Size(max = 500, message = "テキストは500文字以下で入力してください")
         String text,
 
-        @NotNull
+        @NotNull(message = "ステータスは必須です")
         ArticleStatus status,
 
-        @NotEmpty
+        @NotEmpty(message = "タグは必須です")
         @Valid
         List<TagRequest> tags,
 
