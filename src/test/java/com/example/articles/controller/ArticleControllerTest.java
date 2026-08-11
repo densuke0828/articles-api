@@ -6,6 +6,7 @@ import com.example.articles.dto.TagRequest;
 import com.example.articles.entity.Article;
 import com.example.articles.entity.Tag;
 import com.example.articles.enums.ArticleStatus;
+import com.example.articles.exception.ArticleNotFoundException;
 import com.example.articles.service.ArticleService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -271,6 +272,7 @@ public class ArticleControllerTest {
                 .andExpect(jsonPath("$.content[0].publicationDate").value(String.valueOf(aristotleArticle.getPublicationDate())))
                 .andExpect(jsonPath("$.content[0].tags", hasSize(2)))
                 .andExpect(jsonPath("$.content[0].tags[0].name").value(philosophyTags.get(0).getName()));
+        then(articleService).should().searchByKeyword(keyword, pageable);
     }
 
     @Test
@@ -289,6 +291,7 @@ public class ArticleControllerTest {
                 .andExpect(jsonPath("$.content[0].publicationDate").value(String.valueOf(aristotleArticle.getPublicationDate())))
                 .andExpect(jsonPath("$.content[0].tags", hasSize(2)))
                 .andExpect(jsonPath("$.content[0].tags[0].name").value(philosophyTags.get(0).getName()));
+        then(articleService).should().getArticles(pageable);
     }
 
     @Test
@@ -304,5 +307,59 @@ public class ArticleControllerTest {
                 .andExpect(jsonPath("$.tags", hasSize(2)))
                 .andExpect(jsonPath("$.tags[0].name").value(philosophyTags.get(0).getName()))
                 .andExpect(jsonPath("$.tags[1].name").value(philosophyTags.get(1).getName()));
+        then(articleService).should().getArticleById(1L);
+    }
+
+    @Test
+    void updateArticle_200_記事が更新される() throws Exception {
+        List<TagRequest> tagRequests = List.of(
+                new TagRequest("プラトン"), new TagRequest("ギリシャ哲学"));
+        ArticleRequest articleRequest = new ArticleRequest("プラトン入門", "プラトンについて",
+                ArticleStatus.PUBLISHED, tagRequests, LocalDate.of(2026, 8, 11));
+        List<Tag> updateTags = List.of(Tag.create(tagRequests.get(0).name()), Tag.create(tagRequests.get(1).name()));
+        Article updatedArticle = Article.create(articleRequest.title(),
+                articleRequest.text(), articleRequest.status(),
+                articleRequest.publicationDate(), updateTags);
+        String json = objectMapper.writeValueAsString(articleRequest);
+        given(articleService.updateArticle(anyLong(), any(ArticleRequest.class))).willReturn(updatedArticle);
+
+        mockMvc.perform(put("/articles/1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.title").value(articleRequest.title()))
+                .andExpect(jsonPath("$.text").value(articleRequest.text()))
+                .andExpect(jsonPath("$.status").value(String.valueOf(articleRequest.status())))
+                .andExpect(jsonPath("$.publicationDate").value(String.valueOf(articleRequest.publicationDate())))
+                .andExpect(jsonPath("$.tags", hasSize(2)))
+                .andExpect(jsonPath("$.tags[0].name").value(tagRequests.get(0).name()))
+                .andExpect(jsonPath("$.tags[1].name").value(tagRequests.get(1).name()));
+        then(articleService).should().updateArticle(1L, articleRequest);
+    }
+
+    @Test
+    void deleteArticle_204_記事が削除される() throws Exception {
+        mockMvc.perform(delete("/articles/1"))
+                .andExpect(status().isNoContent());
+        then(articleService).should().deleteArticle(1L);
+    }
+
+    @Test
+    void deleteArticle_400_IDが数値でない() throws Exception {
+        mockMvc.perform(delete("/articles/abc"))
+                .andExpect(status().isBadRequest());
+        then(articleService).should(never()).deleteArticle(anyLong());
+    }
+
+    @Test
+    void deleteArticle_404_指定したIDが存在しない() throws Exception {
+        willThrow(new ArticleNotFoundException(999L)).given(
+                articleService).deleteArticle(999L);
+
+        mockMvc.perform(delete("/articles/999"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.message").value(
+                        "指定された記事はありません"));
+        then(articleService).should().deleteArticle(999L);
     }
 }
