@@ -1,14 +1,20 @@
 package com.example.articles.controller;
 
 import com.example.articles.dto.ArticleRequest;
+import com.example.articles.dto.ArticleResponse;
 import com.example.articles.dto.TagRequest;
 import com.example.articles.entity.Article;
 import com.example.articles.entity.Tag;
 import com.example.articles.enums.ArticleStatus;
 import com.example.articles.service.ArticleService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -37,6 +43,17 @@ public class ArticleControllerTest {
 
     @Autowired
     ObjectMapper objectMapper;
+
+    private List<Tag> philosophyTags;
+    private Article aristotleArticle;
+
+    @BeforeEach
+    void setUp() {
+        philosophyTags = List.of(Tag.create("アリストテレス"), Tag.create("哲学"));
+        aristotleArticle = Article.create("アリストテレス入門", "アリストテレスとは",
+                ArticleStatus.PUBLISHED, LocalDate.of(2026, 8, 1),
+                philosophyTags);
+    }
 
     @Test
     void createArticle_201() throws Exception {
@@ -223,7 +240,7 @@ public class ArticleControllerTest {
     @Test
     void createArticle_400_Tag_2番目のnameが空文字() throws Exception {
         List<TagRequest> tagRequests = List.of(
-                new TagRequest(""), new TagRequest("プログラミング"));
+                new TagRequest("Java"), new TagRequest(""));
         ArticleRequest articleRequest = new ArticleRequest("Java", "Java基礎",
                 ArticleStatus.DRAFT, tagRequests, LocalDate.of(2026, 8, 1));
         String json = objectMapper.writeValueAsString(articleRequest);
@@ -235,5 +252,42 @@ public class ArticleControllerTest {
                 .andExpect(jsonPath("$.message").value(
                         org.hamcrest.Matchers.containsString("tags[1].name")));
         then(articleService).should(never()).createArticle(articleRequest);
+    }
+
+    @Test
+    void getArticle_200_keywordに合致した記事を取得() throws Exception {
+        String keyword = "アリストテレス";
+        Pageable pageable = PageRequest.of(0, 10);
+        Page<ArticleResponse> articlePages = new PageImpl<>(
+                List.of(ArticleResponse.from(aristotleArticle)), pageable, 1);
+        given(articleService.searchByKeyword(keyword, pageable)).willReturn(articlePages);
+
+        mockMvc.perform(get("/articles").param("keyword", keyword))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content.length()").value(1))
+                .andExpect(jsonPath("$.content[0].title").value(aristotleArticle.getTitle()))
+                .andExpect(jsonPath("$.content[0].text").value(aristotleArticle.getText()))
+                .andExpect(jsonPath("$.content[0].status").value(String.valueOf(aristotleArticle.getStatus())))
+                .andExpect(jsonPath("$.content[0].publicationDate").value(String.valueOf(aristotleArticle.getPublicationDate())))
+                .andExpect(jsonPath("$.content[0].tags", hasSize(2)))
+                .andExpect(jsonPath("$.content[0].tags[0].name").value(philosophyTags.get(0).getName()));
+    }
+
+    @Test
+    void getArticle_200_pageableに合わせた記事を取得() throws Exception {
+        Pageable pageable = PageRequest.of(0, 10);
+        Page<ArticleResponse> articlePages = new PageImpl<>(
+                List.of(ArticleResponse.from(aristotleArticle)), pageable, 1);
+        given(articleService.getArticles(pageable)).willReturn(articlePages);
+
+        mockMvc.perform(get("/articles"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content.length()").value(1))
+                .andExpect(jsonPath("$.content[0].title").value(aristotleArticle.getTitle()))
+                .andExpect(jsonPath("$.content[0].text").value(aristotleArticle.getText()))
+                .andExpect(jsonPath("$.content[0].status").value(String.valueOf(aristotleArticle.getStatus())))
+                .andExpect(jsonPath("$.content[0].publicationDate").value(String.valueOf(aristotleArticle.getPublicationDate())))
+                .andExpect(jsonPath("$.content[0].tags", hasSize(2)))
+                .andExpect(jsonPath("$.content[0].tags[0].name").value(philosophyTags.get(0).getName()));
     }
 }
