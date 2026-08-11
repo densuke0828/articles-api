@@ -290,4 +290,19 @@ public class ArticleControllerTest {
                 .andExpect(jsonPath("$.content[0].tags", hasSize(2)))
                 .andExpect(jsonPath("$.content[0].tags[0].name").value(philosophyTags.get(0).getName()));
     }
+
+    @Test
+    void getArticleById_200_指定されたidの記事を取得() throws Exception {
+        given(articleService.getArticleById(1L)).willReturn(aristotleArticle);
+
+        mockMvc.perform(get("/articles/1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.title").value(aristotleArticle.getTitle()))
+                .andExpect(jsonPath("$.text").value(aristotleArticle.getText()))
+                .andExpect(jsonPath("$.status").value(String.valueOf(aristotleArticle.getStatus())))
+                .andExpect(jsonPath("$.publicationDate").value(String.valueOf(aristotleArticle.getPublicationDate())))
+                .andExpect(jsonPath("$.tags", hasSize(2)))
+                .andExpect(jsonPath("$.tags[0].name").value(philosophyTags.get(0).getName()))
+                .andExpect(jsonPath("$.tags[1].name").value(philosophyTags.get(1).getName()));
+    }
 }
