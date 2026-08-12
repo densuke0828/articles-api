@@ -1,11 +1,13 @@
 package com.example.articles;
 
 import com.example.articles.dto.ArticleRequest;
+import com.example.articles.dto.ArticleResponse;
 import com.example.articles.dto.TagRequest;
 import com.example.articles.entity.Article;
 import com.example.articles.entity.Tag;
 import com.example.articles.enums.ArticleStatus;
 import com.example.articles.repository.ArticleRepository;
+import com.example.articles.repository.TagRepository;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import org.junit.jupiter.api.BeforeEach;
@@ -13,6 +15,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.data.domain.Page;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,6 +23,7 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -42,6 +46,22 @@ public class ArticleIntegrationTest {
 
     @PersistenceContext
     private EntityManager entityManager;
+
+    private Tag aristotleTag;
+    private Tag philosophyTag;
+    private Article aristotleArticle;
+
+    @BeforeEach
+    void setUp() {
+        aristotleTag = Tag.create("アリストテレス");
+        philosophyTag = Tag.create("哲学");
+        List<Tag> philosophyTags = List.of(aristotleTag, philosophyTag);
+        aristotleArticle = Article.create("アリストテレス入門", "アリストテレスとは",
+                ArticleStatus.PUBLISHED, LocalDate.of(2026, 8, 1),
+                philosophyTags);
+
+        aristotleArticle = articleRepository.save(aristotleArticle);
+    }
 
     @Test
     void POST_articles_201_記事が登録される() throws Exception {
@@ -77,7 +97,7 @@ public class ArticleIntegrationTest {
         Tag firstTag = createdArticle.getTags().get(0);
         Tag secondTag = createdArticle.getTags().get(1);
 
-        assertThat(articleRepository.findAll()).hasSize(1);
+        assertThat(articleRepository.findAll()).hasSize(2);
         assertThat(createdArticle.getTitle()).isEqualTo(articleRequest.title());
         assertThat(createdArticle.getText()).isEqualTo(articleRequest.text());
         assertThat(createdArticle.getStatus()).isEqualTo(articleRequest.status());
@@ -87,4 +107,21 @@ public class ArticleIntegrationTest {
         assertThat(firstTag.getName()).isEqualTo(tagRequests.get(0).name());
         assertThat(secondTag.getName()).isEqualTo(tagRequests.get(1).name());
     }
+
+    @Test
+    void GET_article_200_keywordに合った記事を取得() throws Exception {
+        String keyword = "アリストテレス";
+        mockMvc.perform(get("/articles")
+                        .param("keyword", keyword))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content.length()").value(1))
+                .andExpect(jsonPath("$.content[0].title").value(aristotleArticle.getTitle()))
+                .andExpect(jsonPath("$.content[0].text").value(aristotleArticle.getText()))
+                .andExpect(jsonPath("$.content[0].status").value(String.valueOf(aristotleArticle.getStatus())))
+                .andExpect(jsonPath("$.content[0].publicationDate").value(String.valueOf(aristotleArticle.getPublicationDate())))
+                .andExpect(jsonPath("$.content[0].tags", hasSize(2)))
+                .andExpect(jsonPath("$.content[0].tags[0].name").value(aristotleTag.getName()))
+                .andExpect(jsonPath("$.content[0].tags[1].name").value(philosophyTag.getName()));
+    }
+
 }
