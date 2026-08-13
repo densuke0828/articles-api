@@ -124,4 +124,20 @@ public class ArticleIntegrationTest {
                 .andExpect(jsonPath("$.content[0].tags[1].name").value(philosophyTag.getName()));
     }
 
+    @Test
+    void GET_article_200_pageableに合った記事を取得() throws Exception {
+        mockMvc.perform(get("/articles"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content.length()").value(1))
+                .andExpect(jsonPath("$.content[0].title").value(aristotleArticle.getTitle()))
+                .andExpect(jsonPath("$.content[0].text").value(aristotleArticle.getText()))
+                .andExpect(jsonPath("$.content[0].status").value(String.valueOf(aristotleArticle.getStatus())))
+                .andExpect(jsonPath("$.content[0].publicationDate").value(String.valueOf(aristotleArticle.getPublicationDate())))
+                .andExpect(jsonPath("$.content[0].tags", hasSize(2)))
+                .andExpect(jsonPath("$.content[0].tags[0].name").value(aristotleTag.getName()))
+                .andExpect(jsonPath("$.content[0].tags[1].name").value(philosophyTag.getName()));
+    }
+
+    @Test
+    void
 }
