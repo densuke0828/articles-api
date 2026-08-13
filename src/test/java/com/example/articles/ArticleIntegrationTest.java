@@ -109,7 +109,7 @@ public class ArticleIntegrationTest {
     }
 
     @Test
-    void GET_article_200_keywordに合った記事を取得() throws Exception {
+    void GET_articles_200_keywordに合った記事を取得() throws Exception {
         String keyword = "アリストテレス";
         mockMvc.perform(get("/articles")
                         .param("keyword", keyword))
@@ -125,7 +125,7 @@ public class ArticleIntegrationTest {
     }
 
     @Test
-    void GET_article_200_pageableに合った記事を取得() throws Exception {
+    void GET_articles_200_pageableに合った記事を取得() throws Exception {
         mockMvc.perform(get("/articles"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content.length()").value(1))
@@ -139,5 +139,22 @@ public class ArticleIntegrationTest {
     }
 
     @Test
-    void
+    void GET_articles_200_idに合致する記事取得() throws Exception {
+        mockMvc.perform(get("/articles/" + aristotleArticle.getId()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.title").value(aristotleArticle.getTitle()))
+                .andExpect(jsonPath("$.text").value(aristotleArticle.getText()))
+                .andExpect(jsonPath("$.status").value(String.valueOf(aristotleArticle.getStatus())))
+                .andExpect(jsonPath("$.publicationDate").value(String.valueOf(aristotleArticle.getPublicationDate())))
+                .andExpect(jsonPath("$.tags", hasSize(2)))
+                .andExpect(jsonPath("$.tags[0].name").value(aristotleTag.getName()))
+                .andExpect(jsonPath("$.tags[1].name").value(philosophyTag.getName()));
+    }
+
+    @Test
+    void GET_articles_404_存在しない記事() throws Exception {
+        mockMvc.perform(get("/articles/" + 999L))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.message").value("指定された記事はありません"));
+    }
 }
