@@ -157,4 +157,55 @@ public class ArticleIntegrationTest {
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.message").value("指定された記事はありません"));
     }
+
+    @Test
+    void PUT_articles_200_記事を更新する() throws Exception {
+        List<TagRequest> tagRequests = List.of(
+                new TagRequest("プラトン"), new TagRequest("ギリシャ哲学"));
+        ArticleRequest articleRequest = new ArticleRequest("プラトン入門", "プラトンについて",
+                ArticleStatus.PUBLISHED, tagRequests, LocalDate.of(2026, 8, 11));
+        String json = objectMapper.writeValueAsString(articleRequest);
+
+        mockMvc.perform(put("/articles/" + aristotleArticle.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.title").value(articleRequest.title()))
+                .andExpect(jsonPath("$.text").value(articleRequest.text()))
+                .andExpect(jsonPath("$.status").value(String.valueOf(articleRequest.status())))
+                .andExpect(jsonPath("$.publicationDate").value(String.valueOf(articleRequest.publicationDate())))
+                .andExpect(jsonPath("$.tags", hasSize(2)))
+                .andExpect(jsonPath("$.tags[0].name").value(tagRequests.get(0).name()))
+                .andExpect(jsonPath("$.tags[1].name").value(tagRequests.get(1).name()));
+
+        entityManager.flush();
+        entityManager.clear();
+
+        Article createdArticle = articleRepository.findById(aristotleArticle.getId()).orElseThrow();
+        Tag firstTag = createdArticle.getTags().get(0);
+        Tag secondTag = createdArticle.getTags().get(1);
+
+        assertThat(articleRepository.findAll()).hasSize(1);
+        assertThat(createdArticle.getTitle()).isEqualTo(articleRequest.title());
+        assertThat(createdArticle.getText()).isEqualTo(articleRequest.text());
+        assertThat(createdArticle.getStatus()).isEqualTo(articleRequest.status());
+        assertThat(createdArticle.getPublicationDate()).isEqualTo(articleRequest.publicationDate());
+        assertThat(createdArticle.getTags()).hasSize(2);
+
+        assertThat(firstTag.getName()).isEqualTo(tagRequests.get(0).name());
+        assertThat(secondTag.getName()).isEqualTo(tagRequests.get(1).name());
+    }
+
+    @Test
+    void DELETE_article_204_記事が削除される() throws Exception {
+        Long aristotleId = aristotleTag.getId();
+        Long philosophyId = philosophyTag.getId();
+
+        mockMvc.perform(delete("/articles/" + aristotleArticle.getId()))
+                .andExpect(status().isNoContent());
+        assertThat(articleRepository.findById(aristotleArticle.getId())).isEmpty();
+
+        assertThat(entityManager.find(Tag.class, aristotleId)).isNotNull();
+        assertThat(entityManager.find(Tag.class, philosophyId)).isNotNull();
+    }
 }
